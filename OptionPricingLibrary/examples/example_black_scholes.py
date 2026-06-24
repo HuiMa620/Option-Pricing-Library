@@ -6,7 +6,8 @@ Created on Fri Jun 19 18:34:54 2026
 """
 
 #examples/example_black_scholes.py
-
+import os
+os.chdir('..')
 
 from pricing.products import EuropeanOption
 from pricing.market import MarketData
