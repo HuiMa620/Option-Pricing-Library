@@ -6,8 +6,7 @@ Created on Mon Jun 22 23:33:03 2026
 """
 
 #test/test_numerical_greeks.py
-import os
-os.chdir('..')
+
 
 from pricing.products import EuropeanOption
 from pricing.market import MarketData
