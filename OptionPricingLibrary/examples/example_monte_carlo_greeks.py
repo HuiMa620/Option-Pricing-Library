@@ -6,8 +6,8 @@ Created on Sun Jun 21 23:47:31 2026
 """
 
 #OptionPricingLibrary/example_monte_carlo_greeks.py
-import os
-os.chdir('..')
+#import os
+#os.chdir('..')
 
 
 from pricing.products import EuropeanOption
