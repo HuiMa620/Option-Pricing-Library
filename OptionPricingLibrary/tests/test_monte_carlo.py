@@ -6,8 +6,7 @@ Created on Mon Jun 22 23:44:36 2026
 """
 
 #tet/test_monte_carlo.py
-import os
-os.chdir('..')
+
 
 from pricing.products import EuropeanOption
 from pricing.market import MarketData
