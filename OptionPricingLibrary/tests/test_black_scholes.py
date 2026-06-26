@@ -5,8 +5,7 @@ Created on Mon Jun 22 22:57:13 2026
 @author: ma6
 """
 #test/test_black_scholes.py
-import os
-os.chdir('..')
+
 from pricing.products import EuropeanOption
 from pricing.market import MarketData
 from pricing.black_scholes import BlackScholesEngine
