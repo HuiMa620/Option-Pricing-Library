@@ -5,8 +5,8 @@ Created on Wed Jun 24 15:14:13 2026
 
 @author: huima
 """
-import os
-os.chdir('..')
+#import os
+#os.chdir('..')
 from pricing.products import EuropeanOption
 from pricing.market import MarketData
 from pricing.black_scholes import BlackScholesEngine
