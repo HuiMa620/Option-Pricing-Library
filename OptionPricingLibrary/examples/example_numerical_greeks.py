@@ -6,8 +6,8 @@ Created on Fri Jun 19 21:43:26 2026
 """
 
 #OptionPricingLibrary/example_numerical_greeks
-import os
-os.chdir('..')
+#import os
+#os.chdir('..')
 
 from pricing.products import EuropeanOption
 from pricing.market import MarketData
