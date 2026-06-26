@@ -5,8 +5,8 @@ Created on Tue Jun 23 22:11:51 2026
 @author: ma6
 """
 
-import os
-os.chdir('..')
+#import os
+#os.chdir('..')
 
 from pricing.products import EuropeanOption
 from pricing.market import MarketData
