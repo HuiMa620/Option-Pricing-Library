@@ -56,6 +56,7 @@ V = max(continuation_value, exercise_value)
 OptionPricingLibrary/
 ├── pricing/
 │   ├── __init__.py
+|   ├── bimonial_tree.py
 │   ├── products.py
 │   ├── market.py
 │   ├── black_scholes.py
@@ -66,6 +67,7 @@ OptionPricingLibrary/
 │
 ├── examples/
 │   ├── example_black_scholes.py
+|   ├── example_binomial_tree.py
 │   ├── example_monte_carlo.py
 │   ├── example_finite_difference.py
 │   ├── example_crank_nicolson_finite_difference.py
@@ -73,6 +75,7 @@ OptionPricingLibrary/
 │
 ├── tests/
 │   ├── test_black_scholes.py
+|   ├── test_binomial_tree.py
 │   ├── test_put_call_parity.py
 │   ├── test_numerical_greeks.py
 │   ├── test_monte_carlo.py
@@ -195,6 +198,49 @@ print(f"American put price: {american_price:.6f}")
 print(f"Early exercise premium: {american_price - european_price:.6f}")
 ```
 
+```markdown
+## Binomial Tree Example
+
+```python
+from pricing.products import EuropeanOption
+from pricing.market import MarketData
+from pricing.black_scholes import BlackScholesEngine
+from pricing.binomial_tree import BinomialTreeEngine
+
+put = EuropeanOption(
+    spot=100,
+    strike=110,
+    tau=0.5,
+    option_type="Put"
+)
+
+market = MarketData(
+    rate=0.04,
+    dividend=0.02,
+    volatility=0.25
+)
+
+bs_engine = BlackScholesEngine()
+
+european_tree_engine = BinomialTreeEngine(
+    n_steps=1000,
+    exercise="European"
+)
+
+american_tree_engine = BinomialTreeEngine(
+    n_steps=1000,
+    exercise="American"
+)
+
+bs_price = bs_engine.price(put, market)
+european_tree_price = european_tree_engine.price(put, market)
+american_tree_price = american_tree_engine.price(put, market)
+
+print(f"Black-Scholes European put: {bs_price:.6f}")
+print(f"European tree put:         {european_tree_price:.6f}")
+print(f"American tree put:         {american_tree_price:.6f}")
+print(f"Early exercise premium:    {american_tree_price - european_tree_price:.6f}")
+
 ## Running Examples
 
 Run examples from the project root directory:
@@ -203,6 +249,7 @@ Run examples from the project root directory:
 python examples/example_black_scholes.py
 python examples/example_crank_nicolson_finite_difference.py
 python examples/example_american_put_implicit_finite_difference.py
+python examples/example_binomial_tree.py
 ```
 
 ## Running Tests
@@ -214,6 +261,7 @@ pytest
 The tests validate:
 
 * Black-Scholes benchmark prices
+* Binomial tree prices against Black-Scholes benchmarks
 * Put-call parity
 * Analytical Greeks against numerical Greeks
 * Monte Carlo prices against Black-Scholes benchmarks
@@ -225,7 +273,6 @@ The tests validate:
 Planned extensions:
 
 * American put pricing with Crank-Nicolson finite differences
-* Binomial tree pricing for European and American options
 * Asian option pricing using Monte Carlo simulation
 * Barrier option pricing using Monte Carlo simulation
 * Delta-hedging simulation and hedging error analysis
