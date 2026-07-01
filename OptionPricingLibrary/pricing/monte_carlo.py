@@ -57,8 +57,59 @@ class MonteCarloEngine():
     def price(self, option, market):
         price, _ = self.price_error(option, market)
         return price
-        
 
+
+    
+
+    def price_control_variate_error(self, option, market):
+        S0 = option.spot
+        K = option.strike
+        T = option.tau
+        option_type = option.option_type
+        
+        r = market.rate
+        y = market.dividend
+        sigma = market.volatility
+        
+        rng = np.random.default_rng(self.seed)
+        Z = rng.standard_normal(self.n_paths)
+        
+        ST = S0 * np.exp(
+            (r - y - 0.5 * sigma ** 2) * T + sigma * np.sqrt(T) * Z
+            )
+        
+        if option_type == 'Call':
+            payoff = np.maximum(ST - K, 0.0)
+        elif option_type == 'Put':
+            payoff = np.maximum(K - ST, 0.0)
+        else:
+            raise ValueError("option_type must be 'Call' or 'Put'.")
+            
+        Y = np.exp(-r*T) * payoff
+        
+        X = np.exp(-r*T)*ST
+        X_mean = S0 * np.exp(-y*T)
+        
+        covariance_YX = np.cov(Y, X, ddof = 1)[0,1]
+        variance_X = np.var(X, ddof = 1)
+        
+        beta = covariance_YX / variance_X
+        
+        Y_control = Y - beta*(X - X_mean)
+        
+        price = np.mean(Y_control)
+        
+        standard_error = np.std(Y_control, ddof = 1) / np.sqrt(self.n_paths)
+        
+        return price, standard_error
+    
+    
+    def price_control_variate(self, option, market):
+        price, _ = self.price_control_variate_error(option, market)
+        return price
+        
+        
+        
 
 
 
