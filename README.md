@@ -60,28 +60,45 @@ OptionPricingLibrary/
 │   ├── products.py
 │   ├── market.py
 │   ├── black_scholes.py
+|   ├── delta_hedge.py
+|   ├── implied_volatility.py
 │   ├── numerical_greeks.py
 │   ├── monte_carlo.py
 │   ├── finite_difference.py
 │   └── validation.py
 │
 ├── examples/
-│   ├── example_black_scholes.py
+|   ├── example_american_put_implicit_finite_difference.py
 |   ├── example_binomial_tree.py
+│   ├── example_black_scholes.py
+|   ├── example_crank_nicolson_convergence.py
+|   ├── example_delta_hedge.py
+|   ├── example_fast_finite_difference_convergence.py
+|   ├── example_finite_difference.py
+|   ├── example_finite_difference_convergence.py
+|   ├── example_implicit_finite_difference.py
+|   ├── example_implicit_finite_difference_convergence.py
+|   ├── example_implied_volatility.py
 │   ├── example_monte_carlo.py
-│   ├── example_finite_difference.py
+|   ├── example_monte_carlo_control_variate.py
+|   ├── example_monte_carlo_convergence.py
+|   ├── example_monte_carlo_greeks.py
 │   ├── example_crank_nicolson_finite_difference.py
 │   └── example_american_put_implicit_finite_difference.py
 │
 ├── tests/
+|   ├── test_american_put_implicit_finite_difference.py
 │   ├── test_black_scholes.py
 |   ├── test_binomial_tree.py
+|   ├── test_crank_nicolson_finite_difference.py
+|   ├── test_delta_hedge.py
+|   ├── test_implied_volatility.py
 │   ├── test_put_call_parity.py
 │   ├── test_numerical_greeks.py
 │   ├── test_monte_carlo.py
+|   ├── test_monte_carlo_control_variate.py
 │   ├── test_finite_difference.py
-│   ├── test_crank_nicolson_finite_difference.py
-│   └── test_american_put_implicit_finite_difference.py
+|   ├── test_implicit_finite_difference.py
 │
 ├── requirements.txt
 ├── README.md
