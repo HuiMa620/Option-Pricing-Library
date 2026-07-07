@@ -24,7 +24,9 @@ def test_american_put_fd_vs_binomial_tree():
         volatility = 0.25
         )
 
-    fd_engine = AmericanPutImplicitFiniteDifferenceEngine()
+    fd_engine = AmericanPutImplicitFiniteDifferenceEngine(
+        exercise = 'American'
+        )
     tree_engine = BinomialTreeEngine(
         n_steps = 5000,
         exercise = 'American'
