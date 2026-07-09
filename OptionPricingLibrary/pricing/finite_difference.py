@@ -8,6 +8,7 @@ Created on Tue Jun 23 12:32:35 2026
 #pricing/finite_difference.py
 
 import numpy as np
+from pricing.linear_solvers import solve_tridiagonal
 
 class ExplicitFiniteDifferenceEngine():
     
@@ -138,10 +139,11 @@ class ExplicitFiniteDifferenceEngine():
         
         
 class ImplicitFiniteDifferenceEngine:
-    def __init__(self, s_max = 300.0, n_s= 200, n_t = 500):
+    def __init__(self, s_max = 300.0, n_s= 200, n_t = 500, solver = 'thomas'):
         self.s_max = s_max
         self.n_s = n_s
         self.n_t = n_t
+        self.solver = solver
         
         
     def price(self, option, market):
@@ -177,12 +179,7 @@ class ImplicitFiniteDifferenceEngine:
         lower = - dt*(A/dS **2 - B /(2*dS))
         diag = 1.0 + dt*(2*A/dS**2 + r)
         upper = -dt*(A/dS**2 + B/(2*dS))
-        
-        #tridiagonal matrix
-        M = np.zeros((self.n_s - 1, self.n_s - 1))
-        np.fill_diagonal(M, diag)
-        np.fill_diagonal(M[1:], lower[1:])
-        np.fill_diagonal(M[:,1:], upper[:-1])
+
         
         for step in range(self.n_t):
             tau = (step + 1) * dt
@@ -199,7 +196,8 @@ class ImplicitFiniteDifferenceEngine:
             rhs[0] -= lower[0] * leftB       #Otherwise, the first row is b_1 * V_1 + c_1 * V_2 = V_1_old
             rhs[-1] -= upper[-1] * rightB    #But it supposed to be a_1 * V_0 + b_1 * V_1 + c_1 * V_2 = V_1_old
                                              #The rhs is corrected as V_1_old - a_1*V_0. The same for V_n_1
-            V_inner_new = np.linalg.solve(M, rhs)
+            #V_inner_new = np.linalg.solve(M, rhs)
+            V_inner_new = solve_tridiagonal(lower, diag, upper, rhs, method = self.solver)
             
             V[0] = leftB
             V[-1] = rightB
@@ -213,10 +211,11 @@ class ImplicitFiniteDifferenceEngine:
 
 class CrankNicolsonFiniteDifferenceEngine():
     
-    def __init__(self, s_max = 300, n_s = 200, n_t = 500):
+    def __init__(self, s_max = 300, n_s = 200, n_t = 500, solver = 'thomas'):
         self.s_max = s_max
         self.n_s = n_s
         self.n_t = n_t
+        self.solver = solver
         
     def price(self, option, market):
         S0 = option.spot
@@ -261,19 +260,7 @@ class CrankNicolsonFiniteDifferenceEngine():
         rhs_lower = 0.5*dt*L_lower
         rhs_diag = 1.0 + 0.5*dt*L_diag
         rhs_upper = 0.5*dt*L_upper
-        
-        #left hand side matrix
-        M_left = np.zeros((self.n_s-1, self.n_s-1))
-        np.fill_diagonal(M_left, lhs_diag)
-        np.fill_diagonal(M_left[1:], lhs_lower[1:])
-        np.fill_diagonal(M_left[:,1:], lhs_upper[:-1])
-        
-        #rigth hand side matrix
-        M_right = np.zeros((self.n_s - 1, self.n_s - 1))
-        np.fill_diagonal(M_right, rhs_diag)
-        np.fill_diagonal(M_right[1:], rhs_lower[1:])
-        np.fill_diagonal(M_right[:,1:], rhs_upper[:-1])
-        
+    
         for step in range(self.n_t):
             tau_old = step*dt
             tau_new = (step + 1)*dt
@@ -294,7 +281,11 @@ class CrankNicolsonFiniteDifferenceEngine():
                 right_new = 0.0
                 
             #rhs from old interior values
-            rhs = M_right @ V[1:-1]
+            #rhs = M_right @ V[1:-1]
+            V_inner = V[1:-1]
+            rhs = rhs_diag * V_inner
+            rhs[1:] += rhs_lower[1:] * V_inner[:-1]
+            rhs[:-1] += rhs_upper[:-1] * V_inner[1:]
             
             rhs[0] += rhs_lower[0] * left_old
             rhs[-1] += rhs_upper[-1] * right_old
@@ -302,7 +293,8 @@ class CrankNicolsonFiniteDifferenceEngine():
             rhs[0] -= lhs_lower[0]*left_new
             rhs[-1] -= lhs_upper[-1]*right_new
             
-            V_inner_new = np.linalg.solve(M_left, rhs)
+            #V_inner_new = np.linalg.solve(M_left, rhs)
+            V_inner_new = solve_tridiagonal(lhs_lower, lhs_diag, lhs_upper, rhs, method = self.solver)
             
             V[0] = left_new
             V[-1] = right_new
@@ -316,10 +308,11 @@ class CrankNicolsonFiniteDifferenceEngine():
         
         
 class AmericanPutImplicitFiniteDifferenceEngine():
-    def __init__(self, s_max = 300, n_s = 200, n_t = 500):
+    def __init__(self, s_max = 300, n_s = 200, n_t = 500, solver = 'thomas'):
         self.s_max = s_max
         self.n_s = n_s
         self.n_t = n_t
+        self.solver = solver
         
     def price(self, option, market):
         S0 = option.spot
@@ -352,12 +345,6 @@ class AmericanPutImplicitFiniteDifferenceEngine():
         diag = 1 + dt*(2 * A/dS**2 + r)
         upper = -dt*(A/dS**2 + B/(2*dS))
         
-        #tridiagonal matrix
-        M = np.zeros((self.n_s - 1, self.n_s - 1))
-        np.fill_diagonal(M, diag)
-        np.fill_diagonal(M[1:], lower[1:])
-        np.fill_diagonal(M[:,1:], upper[:-1])
-        
         #immediate exercise value for S grid points
         exercise_inner = np.maximum(K - S_inner, 0.0)
         
@@ -375,7 +362,7 @@ class AmericanPutImplicitFiniteDifferenceEngine():
             rhs[-1] -= upper[-1] * rightB
             
             #continuation value from implicit computation
-            continuation_inner = np.linalg.solve(M, rhs)
+            continuation_inner = solve_tridiagonal(lower, diag, upper, rhs, method = self.solver)
             
             #correct V value by exercise value vs continuation value
             V_inner_new = np.maximum(continuation_inner, exercise_inner)
@@ -393,10 +380,11 @@ class AmericanPutImplicitFiniteDifferenceEngine():
         
 class AmericanPutCrankNicolsonFiniteDifferenceEngine():
     
-    def __init__(self, s_max = 300, n_s = 200, n_t = 500):
+    def __init__(self, s_max = 300, n_s = 200, n_t = 500, solver = 'thomas'):
         self.s_max = s_max
         self.n_s = n_s
         self.n_t = n_t
+        self.solver = solver
         
     def price(self, option, market):
         S0 = option.spot
@@ -439,19 +427,7 @@ class AmericanPutCrankNicolsonFiniteDifferenceEngine():
         rhs_lower = 0.5*dt*L_lower
         rhs_diag = 1.0 + 0.5*dt*L_diag
         rhs_upper = 0.5*dt*L_upper
-        
-        #left hand side matrix
-        M_left = np.zeros((self.n_s-1, self.n_s-1))
-        np.fill_diagonal(M_left, lhs_diag)
-        np.fill_diagonal(M_left[1:], lhs_lower[1:])
-        np.fill_diagonal(M_left[:,1:], lhs_upper[:-1])
-        
-        #rigth hand side matrix
-        M_right = np.zeros((self.n_s - 1, self.n_s - 1))
-        np.fill_diagonal(M_right, rhs_diag)
-        np.fill_diagonal(M_right[1:], rhs_lower[1:])
-        np.fill_diagonal(M_right[:,1:], rhs_upper[:-1])
-        
+
         exercise_inner = np.maximum(K - S_inner, 0.0)
         for step in range(self.n_t):
             #tau_old = step*dt
@@ -465,7 +441,12 @@ class AmericanPutCrankNicolsonFiniteDifferenceEngine():
             right_new = 0.0
                 
             #rhs from old interior values
-            rhs = M_right @ V[1:-1]
+            #rhs = M_right @ V[1:-1]
+            V_inner = V[1:-1]
+
+            rhs = rhs_diag * V_inner
+            rhs[1:] += rhs_lower[1:] * V_inner[:-1]
+            rhs[:-1] += rhs_upper[:-1] * V_inner[1:]
             
             rhs[0] += rhs_lower[0] * left_old
             rhs[-1] += rhs_upper[-1] * right_old
@@ -473,7 +454,8 @@ class AmericanPutCrankNicolsonFiniteDifferenceEngine():
             rhs[0] -= lhs_lower[0]*left_new
             rhs[-1] -= lhs_upper[-1]*right_new
             
-            V_continuation_inner = np.linalg.solve(M_left, rhs)
+            #V_continuation_inner = np.linalg.solve(M_left, rhs)
+            V_continuation_inner = solve_tridiagonal(lhs_lower, lhs_diag, lhs_upper, rhs, method = self.solver)
             V_inner_new = np.maximum(exercise_inner, V_continuation_inner)
             
             V[0] = left_new
