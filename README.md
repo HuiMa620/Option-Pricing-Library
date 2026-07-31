@@ -1,85 +1,85 @@
 # Option Pricing Library
 
-A modular Python library for pricing equity options using analytical formulas, Monte Carlo simulation, finite-difference PDE methods, binomial trees, implied volatility tools, and volatility-surface-based pricing.
+A modular Python library for equity option pricing, numerical methods, volatility-surface construction, local volatility simulation, and Heston stochastic-volatility modeling.
 
-This project was developed as a quantitative finance portfolio project. The main goal is to demonstrate core derivatives pricing methods used in equity option modeling, including model validation, numerical convergence checks, and a realistic option-chain-to-volatility-surface workflow.
+This project was developed as a quantitative finance portfolio project. It demonstrates the core workflow used in derivatives analytics: analytical pricing, numerical pricing, model validation, implied-volatility inversion, volatility-surface construction, and stochastic-volatility calibration.
 
-## Current Status
-
-The library currently supports:
+## Highlights
 
 - Black-Scholes analytical pricing and Greeks
-- Numerical Greeks using bump-and-revalue
-- Monte Carlo pricing with variance reduction
-- Explicit, implicit, and Crank-Nicolson finite-difference PDE pricing
-- American put pricing with implicit and Crank-Nicolson finite-difference methods
-- Binomial tree pricing for European and American options
-- Delta hedging simulation
-- Implied volatility inversion using bisection and Newton methods
-- Implied volatility surface construction from option quotes
+- Engine-agnostic numerical Greeks
+- Monte Carlo pricing with antithetic variates and control variates
+- Explicit, implicit, and Crank-Nicolson finite-difference PDE solvers
+- European and American option pricing with binomial trees
+- American put pricing with PSOR early-exercise handling
+- Barrier option Monte Carlo pricing for knock-out options
+- Delta-hedging simulation
+- Implied-volatility inversion with Newton and bisection methods
+- Volatility-surface construction from option chains
 - Surface-based Black-Scholes pricing and Greeks
-- Option chain CSV loading with bid/ask mid-price conversion
-- Synthetic option chain data for examples and integration tests
+- Local-volatility Monte Carlo simulation
+- Heston Monte Carlo simulation
+- Heston semi-closed-form pricing using characteristic functions
+- Heston price-based calibration to option prices
 
 ## Project Structure
 
 ```text
 OptionPricingLibrary/
     pricing/
-        products.py
-        market.py
-        black_scholes.py
-        numerical_greeks.py
-        monte_carlo.py
-        finite_difference.py
-        linear_solvers.py
-        binomial_tree.py
-        delta_hedge.py
-        implied_volatility.py
-        volatility_surface.py
-        surface_black_scholes.py
-        option_chain.py
-        validation.py
+        products.py                  # EuropeanOption and BarrierOption definitions
+        market.py                    # MarketData container
+        black_scholes.py             # Analytical Black-Scholes pricing and Greeks
+        numerical_greeks.py          # Bump-and-revalue Greeks
+        monte_carlo.py               # GBM Monte Carlo engine
+        finite_difference.py         # Explicit, implicit, and Crank-Nicolson PDE engines
+        linear_solvers.py            # Linear solvers for finite-difference methods
+        binomial_tree.py             # European and American binomial tree pricing
+        psor.py                      # PSOR solver for American early-exercise problems
+        delta_hedge.py               # Delta-hedging simulation
+        implied_volatility.py        # Implied-volatility solvers
+        volatility_surface.py        # Volatility surface construction and interpolation
+        surface_black_scholes.py     # Black-Scholes pricing under a volatility surface
+        option_chain.py              # CSV option-chain loader
+        barrier_options.py           # Barrier option Monte Carlo engine
+        local_volatility.py          # Local volatility surface and Monte Carlo engine
+        heston_params.py             # Heston parameter container
+        heston_monte_carlo.py        # Heston Monte Carlo engine
+        heston_closed_form.py        # Heston semi-closed-form pricing engine
+        heston_calibration.py        # Heston calibration engine
+        validation.py                # Validation helpers
 
     examples/
         example_black_scholes.py
         example_monte_carlo.py
-        example_monte_carlo_control_variate.py
-        example_monte_carlo_convergence.py
-        example_monte_carlo_greeks.py
-        example_numerical_greeks.py
         example_finite_difference.py
-        example_implicit_finite_difference.py
-        example_crank_nicolson_finite_difference.py
         example_binomial_tree.py
         example_delta_hedge.py
         example_implied_volatility.py
-        example_volatility_surface_get_vol.py
-        example_volatility_smile.py
-        example_volatility_skew.py
         example_surface_black_scholes.py
         example_build_surface_from_option_chain.py
-        example_american_put_implicit_finite_difference.py
-        example_american_put_crank_nicolson_finite_difference.py
+        example_barrier_options.py
+        example_local_volatility.py
+        example_heston_monte_carlo.py
+        example_heston_closed_form.py
+        example_heston_calibration.py
+        ...
 
     tests/
         test_black_scholes.py
-        test_put_call_parity.py
         test_monte_carlo.py
-        test_monte_carlo_control_variate.py
-        test_numerical_greeks.py
         test_finite_difference.py
-        test_implicit_finite_difference.py
-        test_crank_nicolson_finite_difference.py
         test_binomial_tree.py
         test_delta_hedge.py
         test_implied_volatility.py
         test_volatility_surface.py
         test_option_chain.py
-        test_american_put_implicit_finite_difference.py
-        test_american_put_crank_nicolson_finite_difference.py
-        test_american_put_binomial_tree_vs_finite_difference.py
-        test_american_put_crank_nicolson_binomial_tree_implicit.py
+        test_barrier_options.py
+        test_local_volatility.py
+        test_heston_monte_carlo.py
+        test_heston_closed_form.py
+        test_heston_calibration.py
+        ...
 
     data/
         synthetic_option_chain.csv
@@ -90,7 +90,7 @@ OptionPricingLibrary/
 
 ## Installation
 
-Clone the repository and install the required Python packages:
+Clone the repository and install the dependencies:
 
 ```bash
 git clone <repository-url>
@@ -107,9 +107,9 @@ matplotlib
 pytest
 ```
 
-## Core Data Structures
+## Core Usage
 
-The library uses a common object-oriented interface for option products and market inputs.
+Most engines use the same object-oriented interface:
 
 ```python
 from pricing.products import EuropeanOption
@@ -127,22 +127,32 @@ market = MarketData(
     dividend=0.02,
     volatility=0.25
 )
-```
 
-Most engines follow the same interface:
-
-```python
 price = engine.price(option, market)
 ```
 
+The common product inputs are:
+
+- `spot`: current underlying price
+- `strike`: option strike
+- `tau`: time to maturity in years
+- `option_type`: `"Call"` or `"Put"`
+
+The common market inputs are:
+
+- `rate`: continuously compounded risk-free rate
+- `dividend`: continuously compounded dividend yield
+- `volatility`: Black-Scholes volatility, used by Black-Scholes-style engines and as a benchmark input
+
 ## Black-Scholes Analytical Engine
 
-The Black-Scholes engine supports European call and put pricing with analytical Greeks.
+The Black-Scholes engine prices European calls and puts and computes analytical Greeks.
 
 ```python
 from pricing.black_scholes import BlackScholesEngine
 
 engine = BlackScholesEngine()
+
 price = engine.price(option, market)
 delta = engine.Delta(option, market)
 gamma = engine.Gamma(option, market)
@@ -157,11 +167,11 @@ Supported analytical Greeks:
 - Vega
 - Theta
 
-The library also includes put-call parity validation.
+The project includes validation tests for Black-Scholes prices and put-call parity.
 
 ## Numerical Greeks
 
-The numerical Greeks module provides engine-agnostic bump-and-revalue calculations:
+The numerical Greeks module provides bump-and-revalue calculations that can be applied to different pricing engines.
 
 ```python
 from pricing.numerical_greeks import (
@@ -170,21 +180,15 @@ from pricing.numerical_greeks import (
     numerical_vega,
     numerical_theta,
 )
+
+numerical_delta_value = numerical_delta(engine, option, market)
 ```
 
-These functions can be used to validate analytical Greeks or compute Greeks for engines where closed-form formulas are not available.
+This is useful for validating analytical Greeks and for pricing engines where closed-form Greeks are not implemented.
 
 ## Monte Carlo Pricing
 
 The Monte Carlo engine simulates geometric Brownian motion under the risk-neutral measure.
-
-Features:
-
-- European call and put pricing
-- Antithetic variates
-- Standard error estimation
-- Control variate pricing using Black-Scholes as the control
-- Convergence examples against Black-Scholes prices
 
 ```python
 from pricing.monte_carlo import MonteCarloEngine
@@ -196,10 +200,18 @@ mc_engine = MonteCarloEngine(
 )
 
 price = mc_engine.price(option, market)
-price, error = mc_engine.price_error(option, market)
+price, standard_error = mc_engine.price_error(option, market)
 ```
 
-Control variate pricing:
+Features:
+
+- European call and put pricing
+- Antithetic variates
+- Standard error estimation
+- Control variate pricing using the Black-Scholes price as the control
+- Convergence examples against Black-Scholes analytical prices
+
+Control variate example:
 
 ```python
 cv_price = mc_engine.price_control_variate(option, market)
@@ -208,7 +220,7 @@ cv_price, cv_error = mc_engine.price_control_variate_error(option, market)
 
 ## Finite-Difference PDE Pricing
 
-The library includes explicit, implicit, and Crank-Nicolson finite-difference engines.
+The finite-difference module implements explicit, implicit, and Crank-Nicolson finite-difference methods for the Black-Scholes PDE.
 
 ```python
 from pricing.finite_difference import (
@@ -227,153 +239,90 @@ fd_engine = CrankNicolsonFiniteDifferenceEngine(
 price = fd_engine.price(option, market)
 ```
 
-Implemented PDE methods:
+Implemented methods:
 
 - Explicit finite difference
 - Implicit finite difference
 - Crank-Nicolson finite difference
-- Tridiagonal linear solvers using Thomas algorithm and banded matrix routines
-- Convergence examples against Black-Scholes analytical prices
+- Thomas algorithm for tridiagonal systems
+- Banded-matrix solver option
+- Convergence tests against analytical Black-Scholes prices
 
-## American Put Pricing
+## American Options and Early Exercise
 
-The library supports American put pricing using finite-difference methods and binomial trees.
-
-```python
-from pricing.finite_difference import (
-    AmericanPutImplicitFiniteDifferenceEngine,
-    AmericanPutCrankNicolsonFiniteDifferenceEngine,
-)
-from pricing.binomial_tree import BinomialTreeEngine
-
-american_fd = AmericanPutCrankNicolsonFiniteDifferenceEngine(
-    s_max=300.0,
-    n_s=300,
-    n_t=300,
-    solver="thomas"
-)
-
-price = american_fd.price(option, market)
-```
-
-American put results are validated against binomial tree benchmarks.
-
-Current American option implementation focuses on American puts. A future improvement is to add a PSOR solver for a more direct treatment of the early-exercise linear complementarity problem.
-
-## Binomial Tree Pricing
-
-The binomial tree engine supports European and American exercise styles.
+The library supports American put pricing through both binomial trees and finite-difference methods.
 
 ```python
 from pricing.binomial_tree import BinomialTreeEngine
 
-engine = BinomialTreeEngine(
-    n_steps=1000,
-    exercise="American"
-)
-
-price = engine.price(option, market)
+bt_engine = BinomialTreeEngine(n_steps=500)
+price = bt_engine.price(option, market, exercise="American")
 ```
 
-The binomial tree module is used both as a standalone pricing method and as a benchmark for American finite-difference methods.
+Early exercise is also handled with a projected successive over-relaxation solver for the linear complementarity problem that arises in finite-difference American option pricing.
 
-## Implied Volatility Solver
+```python
+from pricing.psor import psor
+```
 
-The implied volatility solver supports bisection and Newton methods.
+Implemented early-exercise tools:
+
+- American put via binomial tree
+- American put via implicit finite difference
+- American put via Crank-Nicolson finite difference
+- PSOR projection for early-exercise constraints
+- Cross-validation between binomial tree and finite-difference engines
+
+## Implied Volatility
+
+The implied-volatility module solves for the Black-Scholes volatility that reproduces a target option price.
 
 ```python
 from pricing.implied_volatility import ImpliedVolatilitySolver
 
-solver = ImpliedVolatilitySolver()
-
-iv = solver.solve(
+iv_solver = ImpliedVolatilitySolver()
+implied_vol = iv_solver.solve(
     option=option,
     market=market,
-    market_price=market_price,
-    initial_guess=0.2
+    target_price=price
 )
 ```
 
-Features:
+Implemented methods:
 
-- Bisection solver
-- Newton solver
-- Automatic fallback behavior through the main `solve()` interface
-- Validation against known Black-Scholes prices
+- Bisection method
+- Newton method
+- Fallback logic for robust implied-volatility inversion
 
-## Volatility Surface
+## Volatility Surface Workflow
 
-The volatility surface module builds an implied volatility surface from option quotes.
+The volatility-surface module builds an implied-volatility surface from option quotes and interpolates volatilities across strike and maturity.
 
 ```python
 from pricing.volatility_surface import VolatilitySurface
 
-surface = VolatilitySurface.from_option_quotes(
-    quotes=quotes,
-    spot=100.0,
-    rate=0.04,
-    dividend=0.02,
-    initial_vol_guess=0.2,
-    interpolation_method="vol",
-    extrapolation="flat"
+surface = VolatilitySurface(
+    maturities=[0.5, 1.0, 2.0],
+    strikes=[80.0, 90.0, 100.0, 110.0, 120.0],
+    vol_matrix=vol_matrix,
+    interpolation_method="total_variance",
+    extrapolation_method="flat"
 )
 
-sigma = surface.get_vol(
-    tau=1.0,
-    strike=110.0
-)
+vol = surface.get_vol(tau=1.0, strike=105.0)
 ```
 
-Supported features:
+Features:
 
-- Construction from option quote dictionaries
-- Implied volatility inversion quote by quote
-- Rectangular maturity-strike surface validation
-- Duplicate quote detection
-- Missing quote detection
-- Volatility interpolation
-- Total variance interpolation
-- Flat extrapolation outside the grid
-- Smile and skew examples using synthetic option data
+- Volatility interpolation by strike and maturity
+- Flat extrapolation outside the quoted grid
+- Total-variance interpolation
+- Synthetic volatility smile and skew examples
+- Surface construction from option quotes
 
-Each quote should have the form:
+## Option Chain Loading
 
-```python
-{
-    "tau": 0.5,
-    "strike": 100.0,
-    "option_type": "Call",
-    "market_price": 5.25,
-}
-```
-
-## Surface-Based Black-Scholes Engine
-
-The surface Black-Scholes engine prices options by first querying the implied volatility surface at the option maturity and strike, then passing that volatility into the Black-Scholes analytical engine.
-
-```python
-from pricing.surface_black_scholes import SurfaceBlackScholesEngine
-
-surface_engine = SurfaceBlackScholesEngine(surface)
-
-surface_price = surface_engine.price(option, market)
-surface_delta = surface_engine.Delta(option, market)
-surface_gamma = surface_engine.Gamma(option, market)
-surface_vega = surface_engine.Vega(option, market)
-surface_theta = surface_engine.Theta(option, market)
-```
-
-This provides a realistic workflow for surface-implied pricing and Greeks:
-
-```text
-option chain -> implied volatility surface -> surface volatility -> Black-Scholes price and Greeks
-```
-
-The current Greeks are sticky-strike surface Greeks: the volatility is read from the surface at the option's maturity and strike, then the standard Black-Scholes Greek formulas are applied using that volatility.
-
-## Option Chain CSV Loader
-
-The option chain module loads bid/ask option chain data from CSV and converts each row into the quote format required by `VolatilitySurface.from_option_quotes()`.
+The option-chain module loads option quotes from CSV files and converts bid/ask quotes into mid prices.
 
 ```python
 from pricing.option_chain import load_option_chain_csv
@@ -381,207 +330,327 @@ from pricing.option_chain import load_option_chain_csv
 quotes = load_option_chain_csv("data/synthetic_option_chain.csv")
 ```
 
-Expected CSV columns:
+The project includes a synthetic option-chain CSV file for examples and tests.
 
-```text
-tau,strike,option_type,bid,ask
-```
+## Surface-Based Black-Scholes Pricing
 
-Example row:
-
-```text
-0.5,100,Call,5.0,5.4
-```
-
-The loader computes:
+The surface-based Black-Scholes engine prices options using volatility read from an implied-volatility surface instead of a single constant market volatility.
 
 ```python
-market_price = 0.5 * (bid + ask)
+from pricing.surface_black_scholes import SurfaceBlackScholesEngine
+
+surface_engine = SurfaceBlackScholesEngine(vol_surface=surface)
+
+price = surface_engine.price(option, market)
+delta = surface_engine.Delta(option, market)
+gamma = surface_engine.Gamma(option, market)
+vega = surface_engine.Vega(option, market)
+theta = surface_engine.Theta(option, market)
+```
+
+This provides a practical bridge between market option-chain data and Black-Scholes-style pricing and Greeks.
+
+## Barrier Option Pricing
+
+The barrier option module prices knock-out barrier options with Monte Carlo path simulation.
+
+```python
+from pricing.products import BarrierOption
+from pricing.barrier_options import BarrierMonteCarloEngine
+
+barrier_option = BarrierOption(
+    spot=100.0,
+    strike=100.0,
+    barrier=80.0,
+    tau=1.0,
+    option_type="Call",
+    barrier_type="Down",
+    knock_type="Out"
+)
+
+barrier_engine = BarrierMonteCarloEngine(
+    n_paths=100000,
+    n_steps=252,
+    seed=1,
+    antithetic=True
+)
+
+price, standard_error = barrier_engine.price_error(barrier_option, market)
+```
+
+Current barrier option support:
+
+- Down-and-out options
+- Up-and-out options
+- Call and put payoffs
+- Standard error estimation
+- Validation against vanilla option bounds and limiting cases
+
+## Local Volatility
+
+The local-volatility module introduces a deterministic volatility function of time and spot, then simulates paths under that local volatility.
+
+```python
+from pricing.local_volatility import (
+    LocalVolatilitySurface,
+    LocalVolatilityMonteCarloEngine,
+)
+
+local_vol_surface = LocalVolatilitySurface(
+    base_vol=0.20,
+    skew_strength=0.30,
+    term_strength=0.05,
+    reference_spot=100.0
+)
+
+lv_engine = LocalVolatilityMonteCarloEngine(
+    n_paths=100000,
+    n_steps=252,
+    seed=1,
+    antithetic=True
+)
+
+price, standard_error = lv_engine.price_error(
+    option=option,
+    market=market,
+    local_vol_surface=local_vol_surface
+)
+```
+
+The first version uses a simple local volatility function with downside skew and term structure. It is intended as an introduction to local-volatility simulation rather than a full Dupire calibration engine.
+
+## Heston Stochastic Volatility
+
+The Heston model extends Black-Scholes by making variance stochastic:
+
+```text
+dS_t = (r - q) S_t dt + sqrt(v_t) S_t dW_t^S
+dv_t = kappa (theta - v_t) dt + xi sqrt(v_t) dW_t^v
+corr(dW_t^S, dW_t^v) = rho
+```
+
+The parameter container is shared by the Heston Monte Carlo, closed-form, and calibration modules:
+
+```python
+from pricing.heston_params import HestonParams
+
+params = HestonParams(
+    v0=0.25**2,
+    kappa=2.0,
+    theta=0.25**2,
+    xi=0.4,
+    rho=-0.7
+)
+
+print(params.satisfies_feller_condition())
+```
+
+Important convention: `v0` and `theta` are variances, not volatilities. For example, a 25% volatility corresponds to `0.25**2` variance.
+
+### Heston Monte Carlo
+
+```python
+from pricing.heston_monte_carlo import HestonMonteCarloEngine
+
+heston_mc = HestonMonteCarloEngine(
+    n_paths=100000,
+    n_steps=252,
+    seed=1,
+    antithetic=True
+)
+
+price, standard_error = heston_mc.price_error(
+    option=option,
+    market=market,
+    params=params
+)
+```
+
+Features:
+
+- Correlated Brownian shocks for spot and variance
+- Full-truncation-style handling of non-negative variance
+- European call and put pricing
+- Standard error estimation
+- Black-Scholes limiting-case tests
+
+### Heston Semi-Closed-Form Pricing
+
+The Heston closed-form engine prices European options using the Heston characteristic function and numerical Fourier inversion.
+
+```python
+from pricing.heston_closed_form import HestonClosedFormEngine
+
+heston_cf = HestonClosedFormEngine(
+    integration_limit=100.0
+)
+
+price = heston_cf.price(
+    option=option,
+    market=market,
+    params=params
+)
 ```
 
 Validation includes:
 
-- Required column checks
-- Positive maturity and strike
-- Non-negative bid
-- Positive ask
-- Ask greater than or equal to bid
-- Valid option type: `Call` or `Put`
-- Positive mid price
+- Black-Scholes limiting case when volatility of variance is zero
+- Put-call parity
+- Positive and finite price checks
+- Sanity check against Heston Monte Carlo
 
-## Synthetic Option Chain Example
+### Heston Calibration
 
-The `data/synthetic_option_chain.csv` file provides a small synthetic option chain for examples and integration tests. It contains a rectangular grid of maturities and strikes with bid/ask prices generated from a mild skew volatility surface.
-
-The main workflow example is:
-
-```bash
-python examples/example_build_surface_from_option_chain.py
-```
-
-This example demonstrates:
-
-- Loading option chain data from CSV
-- Computing mid prices
-- Building an implied volatility surface
-- Plotting the 3D volatility surface
-- Plotting a heatmap
-- Pricing an option using the surface-based Black-Scholes engine
-- Computing surface-based Greeks
-
-## Delta Hedging Simulation
-
-The delta hedging simulator uses Black-Scholes delta to dynamically hedge simulated stock paths.
+The Heston calibration module fits Heston parameters to option prices by minimizing a price-based loss function.
 
 ```python
-from pricing.delta_hedge import DeltaHedgingSimulator
+from pricing.heston_calibration import HestonCalibrator
 
-simulator = DeltaHedgingSimulator(
-    n_steps=252,
-    n_paths=1000,
-    seed=42
+quotes = [
+    {
+        "tau": 0.5,
+        "strike": 90.0,
+        "option_type": "Call",
+        "market_price": 12.34,
+    },
+    {
+        "tau": 1.0,
+        "strike": 100.0,
+        "option_type": "Call",
+        "market_price": 9.87,
+    },
+]
+
+calibrator = HestonCalibrator(pricing_engine=heston_cf)
+
+calibrated_params, result = calibrator.calibrate(
+    quotes=quotes,
+    spot=100.0,
+    rate=0.04,
+    dividend=0.02,
+    initial_guess=None,
+    bounds=None
 )
 
-results = simulator.simulate(
-    option=option,
-    market=market,
-    realized_volatility=0.25
-)
+print(calibrated_params)
+print(result.success)
 ```
 
-This module is intended to illustrate discrete hedging error and the relationship between model volatility, realized volatility, and hedging P&L.
-
-## Tests
-
-The repository includes tests for the main pricing components:
+The current calibration objective is:
 
 ```text
-tests/test_black_scholes.py
-tests/test_put_call_parity.py
-tests/test_monte_carlo.py
-tests/test_monte_carlo_control_variate.py
-tests/test_numerical_greeks.py
-tests/test_finite_difference.py
-tests/test_implicit_finite_difference.py
-tests/test_crank_nicolson_finite_difference.py
-tests/test_binomial_tree.py
-tests/test_delta_hedge.py
-tests/test_implied_volatility.py
-tests/test_volatility_surface.py
-tests/test_option_chain.py
-tests/test_american_put_implicit_finite_difference.py
-tests/test_american_put_crank_nicolson_finite_difference.py
-tests/test_american_put_binomial_tree_vs_finite_difference.py
-tests/test_american_put_crank_nicolson_binomial_tree_implicit.py
+mean((Heston model price - market price)^2)
 ```
 
-The tests cover:
+The test suite validates calibration on synthetic option prices generated from known Heston parameters. The validation focuses on whether calibrated prices fit the synthetic market prices, rather than requiring exact recovery of each individual Heston parameter.
 
-- Black-Scholes prices and Greeks
-- Put-call parity
-- Monte Carlo convergence
-- Monte Carlo control variate variance reduction
-- Numerical Greeks versus analytical Greeks
-- Explicit, implicit, and Crank-Nicolson finite-difference methods
-- American put pricing versus binomial tree benchmarks
-- Implied volatility inversion
-- Volatility surface construction, interpolation, extrapolation, smile, and skew behavior
-- Surface-based Black-Scholes pricing and Greeks
-- Option chain CSV parsing and validation
-- Full option-chain-to-volatility-surface integration workflow
+## Examples
 
-To run tests with pytest:
-
-```bash
-pytest tests/
-```
-
-Individual test files can also be run directly during development.
-
-## Example Workflows
-
-### Black-Scholes price and Greeks
+Run examples from the project root:
 
 ```bash
 python examples/example_black_scholes.py
-```
-
-### Monte Carlo pricing and convergence
-
-```bash
 python examples/example_monte_carlo.py
-python examples/example_monte_carlo_convergence.py
-python examples/example_monte_carlo_control_variate.py
-```
-
-### Finite-difference pricing
-
-```bash
-python examples/example_finite_difference.py
-python examples/example_implicit_finite_difference.py
-python examples/example_crank_nicolson_finite_difference.py
-```
-
-### American put pricing
-
-```bash
-python examples/example_american_put_implicit_finite_difference.py
-python examples/example_american_put_crank_nicolson_finite_difference.py
-```
-
-### Implied volatility and volatility surface
-
-```bash
-python examples/example_implied_volatility.py
-python examples/example_volatility_surface_get_vol.py
-python examples/example_volatility_smile.py
-python examples/example_volatility_skew.py
 python examples/example_surface_black_scholes.py
 python examples/example_build_surface_from_option_chain.py
+python examples/example_barrier_options.py
+python examples/example_local_volatility.py
+python examples/example_heston_monte_carlo.py
+python examples/example_heston_closed_form.py
+python examples/example_heston_calibration.py
 ```
 
-### Delta hedging
+Selected example workflows:
+
+- `example_black_scholes.py`: analytical pricing and Greeks
+- `example_monte_carlo.py`: Monte Carlo price and standard error
+- `example_build_surface_from_option_chain.py`: CSV option chain to implied-volatility surface
+- `example_surface_black_scholes.py`: pricing and Greeks under a volatility surface
+- `example_barrier_options.py`: barrier option Monte Carlo pricing
+- `example_local_volatility.py`: local-volatility Monte Carlo pricing
+- `example_heston_monte_carlo.py`: stochastic-volatility simulation under Heston
+- `example_heston_closed_form.py`: characteristic-function-based Heston pricing
+- `example_heston_calibration.py`: synthetic Heston calibration workflow
+
+## Running Tests
+
+Run the full test suite from the project root:
 
 ```bash
-python examples/example_delta_hedge.py
+pytest tests
 ```
 
-## Development Roadmap
+Or run individual test files:
 
-Completed or implemented in first version:
+```bash
+pytest tests/test_black_scholes.py
+pytest tests/test_volatility_surface.py
+pytest tests/test_heston_closed_form.py
+pytest tests/test_heston_calibration.py
+```
 
-1. Black-Scholes analytical pricing and Greeks
-2. Numerical Greeks
-3. Monte Carlo pricing with antithetic variates and control variates
-4. Explicit, implicit, and Crank-Nicolson finite-difference pricing
-5. Binomial tree pricing
-6. American put pricing using implicit and Crank-Nicolson finite-difference methods
-7. Implied volatility solver
-8. Volatility surface construction from option quotes
-9. Surface-based Black-Scholes pricing and Greeks
-10. Option chain CSV loader and synthetic option chain workflow
+The test suite covers:
 
-Planned next steps:
+- Analytical Black-Scholes prices and Greeks
+- Put-call parity
+- Monte Carlo convergence and variance reduction
+- Finite-difference convergence against Black-Scholes
+- Binomial tree pricing
+- American put comparisons across methods
+- Implied-volatility inversion
+- Volatility-surface interpolation and extrapolation
+- Option-chain loading
+- Barrier option payoff and knock-out logic
+- Local-volatility path simulation
+- Heston Monte Carlo simulation
+- Heston semi-closed-form pricing
+- Heston calibration on synthetic prices
 
-1. Add PSOR solver for American put early-exercise LCP treatment
-2. Add barrier option pricing
-3. Introduce local volatility concepts
-4. Add Heston Monte Carlo pricing
-5. Add Heston semi-closed-form pricing
-6. Add Heston calibration to implied volatility surfaces
-7. Improve project packaging and command-line test execution
-8. Add more robust data handling for real-world option chain formats
+## Design Principles
 
-## Notes and Limitations
+This project emphasizes:
 
-This project is designed for learning, validation, and portfolio demonstration. It is not intended for production trading or risk management use.
+- A common `.price(option, market, ...)` style interface where possible
+- Clear separation between products, market data, models, and numerical engines
+- Model validation through limiting cases and cross-method comparisons
+- Educational readability over production-level optimization
+- Incremental development from Black-Scholes to volatility surfaces and stochastic volatility
+
+## Current Scope and Limitations
+
+The library is intended as a portfolio and educational project, not a production trading system.
 
 Current limitations include:
 
-- Equity option focus
-- European options for most engines
-- American exercise currently focused on puts
-- Volatility surface built on rectangular synthetic or cleaned option quote grids
-- Surface Greeks are sticky-strike Black-Scholes Greeks
-- No transaction costs, funding costs, or discrete dividends in the current core models
-- No stochastic volatility calibration yet
+- Equity-style options only
+- European vanilla pricing for Heston closed-form and calibration
+- Knock-out barrier options only in the first barrier option version
+- Local volatility uses a simple parametric local-volatility function, not a full Dupire calibration
+- Heston calibration currently uses price-based least squares, not implied-volatility-based calibration or vega-weighted calibration
+- No production market-data cleaning, no exchange calendars, and no transaction cost modeling
+
+## Possible Future Extensions
+
+Possible future improvements include:
+
+- Implied-volatility-based Heston calibration
+- Vega-weighted price calibration
+- Multi-start Heston calibration
+- Dupire local-volatility calibration from an implied-volatility surface
+- Additional exotic products such as Asian, lookback, and double-barrier options
+- Jump-diffusion or Bates model extensions
+- SABR model implementation and calibration
+- More robust packaging with `pyproject.toml`
+- Continuous integration with automated tests
+
+## Suggested GitHub Release Description
+
+```text
+v1.0.0 - Option Pricing Library with Volatility Surface and Heston Calibration
+
+This release completes the first full version of the option pricing library, including analytical Black-Scholes pricing, Monte Carlo simulation, finite-difference PDE methods, binomial trees, American option early-exercise handling, volatility-surface construction, barrier option pricing, local volatility simulation, Heston Monte Carlo, Heston semi-closed-form pricing, and Heston calibration to option prices.
+```
+
+## License
+
+No license file is currently included. Add a license before distributing or reusing this project publicly.
