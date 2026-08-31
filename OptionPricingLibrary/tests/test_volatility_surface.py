@@ -14,6 +14,7 @@ from pricing.products import EuropeanOption
 from pricing.market import MarketData
 from pricing.black_scholes import BlackScholesEngine
 from pricing.volatility_surface import VolatilitySurface
+from pricing.surface_black_scholes import SurfaceBlackScholesEngine
 
 
 
@@ -516,6 +517,299 @@ def test_vol_skew_has_downward_slope():
 
 
 
+def test_surface_black_scholes_matches_flat_bs_price():
+    
+    maturities = [0.5, 1.0, 2.0]
+    strikes = [80, 100, 120]
+    vol_matrix = [
+        [0.25, 0.25, 0.25],
+        [0.25, 0.25, 0.25],
+        [0.25, 0.25, 0.25]
+        ]
+    
+    surface = VolatilitySurface(
+        maturities = maturities,
+        strikes = strikes,
+        vol_matrix = vol_matrix
+        )
+    
+    option = EuropeanOption(
+        spot = 100.0,
+        strike = 110.0,
+        tau = 0.75,
+        option_type = 'Call'
+        )
+    
+    market = MarketData(
+        rate = 0.04,
+        dividend = 0.02,
+        volatility = 100 #this volatility is nevered used. 
+        )                #The volatility will be reaplced by implied volatility
+    
+    surface_engine = SurfaceBlackScholesEngine(surface)
+    bs_engine = BlackScholesEngine()
+    
+    surface_price = surface_engine.price(
+        option = option,
+        market = market
+        )
+    
+    expected_market = MarketData(
+        rate = 0.04,
+        dividend = 0.02,
+        volatility = 0.25
+        )
+    
+    expected_price = bs_engine.price(
+        option = option,
+        market = expected_market
+        )
+    
+    assert abs(expected_price - surface_price) < 1e-12
+    
+
+
+def test_surface_black_scholes_uses_interpolated_vol_price():
+    maturities = [0.5, 1.0]
+    strikes = [100, 120]
+    
+    vol_matrix = [
+        [0.2, 0.3],
+        [0.3, 0.4]
+        ]
+    
+    surface = VolatilitySurface(
+        maturities = maturities,
+        strikes = strikes,
+        vol_matrix = vol_matrix
+        )
+    
+    surface_engine = SurfaceBlackScholesEngine(surface)
+    
+    option = EuropeanOption(
+        spot = 100.0,
+        strike = 110,
+        tau = 0.75,
+        option_type = 'Call'
+        )
+    
+    market = MarketData(
+        rate = 0.04,
+        dividend = 0.02,
+        volatility = 100.0 # This volatility will be replaced by implied volatility
+        )
+    
+    expected_market = MarketData(
+        rate = 0.04,
+        dividend = 0.02,
+        volatility = 0.3
+        )
+    
+    surface_price = surface_engine.price(
+        option = option,
+        market = market
+        )
+    
+    bs_engine = BlackScholesEngine()
+    expected_price = bs_engine.price(option, expected_market)
+    
+    assert abs(surface_price - expected_price) < 1e-12
+    
+    
+    
+    
+def test_surface_black_scholes_greeks_match_flat_bs_greeks():
+    maturities = [0.5, 1.0, 2.0]
+    strikes = [80, 100, 120]
+    
+    vol_matrix = [
+        [0.25, 0.25, 0.25],
+        [0.25, 0.25, 0.25],
+        [0.25, 0.25, 0.25]
+        ]
+    
+    surface = VolatilitySurface(
+        maturities = maturities,
+        strikes = strikes,
+        vol_matrix = vol_matrix
+        )
+    
+    option = EuropeanOption(
+        spot = 100.0,
+        strike = 110.0,
+        tau = 0.5,
+        option_type = 'Call'
+        )
+    
+    market = MarketData(
+        rate = 0.04,
+        dividend = 0.02,
+        volatility = 100 # This volatility will be replaced by the surface implied volatility
+        )
+    
+    expected_market = MarketData(
+        rate = 0.04,
+        dividend = 0.02,
+        volatility = 0.25
+        )
+    
+    surface_engine = SurfaceBlackScholesEngine(surface)
+    bs_engine = BlackScholesEngine()
+    
+    surface_delta = surface_engine.Delta(option, market)
+    surface_gamma = surface_engine.Gamma(option, market)
+    surface_vega = surface_engine.Vega(option, market)
+    surface_theta = surface_engine.Theta(option, market)
+    
+    expected_delta = bs_engine.Delta(option, expected_market)
+    expected_gamma = bs_engine.Gamma(option, expected_market)
+    expected_vega = bs_engine.Vega(option, expected_market)
+    expected_theta = bs_engine.Theta(option, expected_market)
+    
+    assert abs(expected_delta - surface_delta) < 1e-12
+    assert abs(expected_gamma - surface_gamma) < 1e-12
+    assert abs(expected_vega - surface_vega) < 1e-12
+    assert abs(expected_theta - surface_theta) < 1e-12
+
+
+
+def test_get_vol_flat_extrapolation_strike_boundary():
+    maturities = [0.5, 1.0]
+    strikes = [90, 100, 110]
+    
+    vol_matrix = [
+        [0.3, 0.25, 0.28],
+        [0.32, 0.27, 0.29]
+        ]
+    
+    surface = VolatilitySurface(
+        maturities = maturities,
+        strikes = strikes,
+        vol_matrix = vol_matrix
+        )
+    
+    vol_low_strike = surface.get_vol(
+        tau = 0.5,
+        strike = 50
+        )
+    
+    vol_high_strike = surface.get_vol(
+        tau = 0.5,
+        strike = 200
+        )
+    
+    assert abs(vol_low_strike - 0.3) < 1e-12
+    assert abs(vol_high_strike - 0.28) < 1e-12
+
+
+def test_get_vol_flat_extrapolation_maturity_boundary():
+    maturities = [0.5, 1.0]
+    strikes = [90, 100, 110]
+    
+    vol_matrix = [
+        [0.3, 0.25, 0.28],
+        [0.32, 0.27, 0.29]
+        ]
+    
+    surface = VolatilitySurface(
+        maturities = maturities,
+        strikes = strikes,
+        vol_matrix = vol_matrix
+        )
+    
+    vol_short_tau = surface.get_vol(
+        tau = 0.1,
+        strike = 100
+        )
+    
+    vol_long_tau = surface.get_vol(
+        tau = 2.0,
+        strike = 100
+        )
+    
+    assert abs(vol_short_tau - 0.25) < 1e-12
+    assert abs(vol_long_tau - 0.27) < 1e-12
+
+
+
+def test_invalid_extrapolation_method_raises_error():
+    maturities = [0.5, 1.0]
+    strikes = [90, 100, 110]
+    
+    vol_matrix = [
+        [0.3, 0.25, 0.28],
+        [0.32, 0.27, 0.29]
+        ]
+    
+    try:
+        VolatilitySurface(
+            maturities = maturities,
+            strikes = strikes,
+            vol_matrix = vol_matrix,
+            extrapolation = 'invalid'
+            )
+    except ValueError:
+        print("Passed invalid extrapolation test.")
+    else:
+        raise AssertionError(
+            "Expected ValueError for invalid extrapolation method."
+            )
+        
+
+def test_total_variance_interpolation():
+    maturities = [1.0, 2.0]
+    strikes = [90, 110]
+    
+    vol_matrix = [
+        [0.2, 0.2],
+        [0.3, 0.3]
+        ]
+    
+    surface = VolatilitySurface(
+        maturities = maturities,
+        strikes = strikes,
+        vol_matrix = vol_matrix,
+        interpolation_method = 'total_variance'
+        )
+    
+    vol = surface.get_vol(
+        tau = 1.5,
+        strike = 100
+        )
+    
+    w1 = 0.2**2 * 1.0
+    w2 = 0.3**2 * 2.0
+    
+    expected_total_variance = 0.5*(w1 + w2)
+    expected_vol = np.sqrt(expected_total_variance / 1.5)
+    
+    assert abs(vol - expected_vol) < 1e-12
+    
+
+
+def test_invalid_interpolation_method_raises_error():
+    maturities = [0.5, 1.0]
+    strikes = [90, 100, 110]
+    
+    vol_matrix = [
+        [0.3, 0.25, 0.28],
+        [0.32, 0.27, 0.29]
+        ]
+    
+    try:
+        VolatilitySurface(
+            maturities = maturities,
+            strikes = strikes,
+            vol_matrix = vol_matrix,
+            interpolation_method = 'invalid'
+            )
+    except ValueError:
+        print('Passed invalid interpolation method test')
+    else:
+        raise AssertionError(
+            'Expected ValueError for invalid interpolation method.'
+            )
+
 
 
 if __name__ == "__main__":
@@ -531,11 +825,15 @@ if __name__ == "__main__":
     test_volatility_skew()
     test_get_vol_interp_skew_surface()
     test_vol_skew_has_downward_slope()
-
-
-
-
-
+    test_surface_black_scholes_matches_flat_bs_price()
+    test_surface_black_scholes_uses_interpolated_vol_price()
+    test_surface_black_scholes_greeks_match_flat_bs_greeks()
+    test_get_vol_flat_extrapolation_strike_boundary()
+    test_get_vol_flat_extrapolation_maturity_boundary()
+    test_invalid_extrapolation_method_raises_error()
+    test_total_variance_interpolation()
+    test_invalid_interpolation_method_raises_error()
+    
 
 
 
