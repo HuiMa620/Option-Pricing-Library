@@ -23,12 +23,16 @@ class VolatilitySurface:
     
     '''
     
-    def __init__(self, maturities, strikes, vol_matrix):
+    def __init__(self, maturities, strikes, vol_matrix, interpolation_method = 'vol', extrapolation = 'flat'):
         self.maturities = np.asarray(maturities, dtype = float)
         self.strikes = np.asarray(strikes, dtype = float)
         self.vol_matrix = np.asarray(vol_matrix, dtype = float)
+        self.interpolation_method = interpolation_method
+        self.extrapolation = extrapolation
         
         self._validate_surface()
+        self._validate_interpolation_method()
+        self._validate_extrapolation()
         
     def _validate_surface(self):
         #validate maturities, strikes, and volatility matrix
@@ -37,7 +41,7 @@ class VolatilitySurface:
             raise ValueError("maturities must be a one-dimensional array.")
         
         if self.strikes.ndim != 1:
-            raise ValueError("strikes must be a one-dimensioanl array.")
+            raise ValueError("strikes must be a one-dimensional array.")
             
         if np.any(self.maturities <= 0):
             raise ValueError("All maturities must be positive.")
@@ -65,6 +69,25 @@ class VolatilitySurface:
         if np.any(self.vol_matrix <= 0):
             raise ValueError("All implied volatilities must be positive.")
             
+    def _validate_extrapolation(self):
+        valid_methods = ['flat']
+        
+        if self.extrapolation not in valid_methods:
+            raise ValueError(
+                f"extrapolation must be one of {valid_methods}, "
+                f"but got {self.extrapolation}"
+                )
+    
+    def _validate_interpolation_method(self):
+        valid_methods = ['vol', 'total_variance']
+        
+        if self.interpolation_method not in valid_methods:
+            raise ValueError(
+                f"interpolation_method must be one of {valid_methods}, "
+                f"but got {self.interpolation_method}"
+                )
+        
+            
   
     
     @classmethod
@@ -75,7 +98,9 @@ class VolatilitySurface:
             rate,
             dividend,
             initial_vol_guess = 0.2,
-            iv_solver = None
+            iv_solver = None,
+            interpolation_method = 'vol',
+            extrapolation = 'flat'
             ):
         
         '''
@@ -179,8 +204,51 @@ class VolatilitySurface:
         return cls(
             maturities = maturities,
             strikes = strikes,
-            vol_matrix = vol_matrix
+            vol_matrix = vol_matrix,
+            interpolation_method = interpolation_method,
+            extrapolation = extrapolation
             )
+    
+    
+    
+    def _get_vol_by_vol_interpolation(self, tau, strike):
+        
+        vols_at_each_maturity = np.array([
+            np.interp(strike, self.strikes, self.vol_matrix[i,:])
+            for i in range(len(self.maturities))
+            ])
+        
+        #np.interp uses flat extrapolation outside the grid
+        interpolated_vol = np.interp(
+            tau,
+            self.maturities,
+            vols_at_each_maturity
+            )
+        return float(interpolated_vol)
+    
+    def _get_vol_by_total_variance_interpolation(self, tau, strike):
+        
+        total_variance_matrix = (
+            self.vol_matrix ** 2 * self.maturities[:, None]
+            )
+        
+        total_variance_at_each_maturities = np.array([
+            np.interp(
+                strike,
+                self.strikes,
+                total_variance_matrix[i,:]
+                )
+            for i in range(len(self.maturities))
+            ])
+        
+        interpolated_total_variance = np.interp(
+            tau,
+            self.maturities,
+            total_variance_at_each_maturities
+            )
+        
+        interpolated_vol = np.sqrt(interpolated_total_variance / tau)
+        return float(interpolated_vol)
     
     
     
@@ -199,17 +267,11 @@ class VolatilitySurface:
         if strike <= 0:
             raise ValueError("strike must be positive.")
             
-        vols_at_each_maturity = np.array([
-            np.interp(strike, self.strikes, self.vol_matrix[i,:])
-            for i in range(len(self.maturities))
-            ])
+        if self.interpolation_method == 'vol':
+            return self._get_vol_by_vol_interpolation(tau, strike)
         
-        interpolated_vol = np.interp(
-            tau,
-            self.maturities,
-            vols_at_each_maturity
-            )
-        return float(interpolated_vol)
+        if self.interpolation_method == 'total_variance':
+            return self._get_vol_by_total_variance_interpolation(tau, strike)
 
             
             
