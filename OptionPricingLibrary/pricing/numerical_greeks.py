@@ -37,7 +37,7 @@ def numerical_gamma(engine, option, market, bump = 1e-3):
 
 
 def numerical_theta(engine, option, market, bump = 1e-4):
-    bump = max(option.tau/100, 1e-6)
+    bump = min(float(bump), 0.5 * float(option.tau))
     option_up = replace(option, tau = option.tau + bump)
     option_down = replace(option, tau = option.tau - bump)
     
